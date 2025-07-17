@@ -5,47 +5,52 @@ namespace App\Http\Controllers;
 use App\Models\Customer;
 use App\Models\CustomerCategory;
 use Illuminate\Http\Request;
+use App\Http\Requests\StoreCustomerRequest;
+use App\Http\Requests\UpdateCustomerRequest;
 
 class CustomerController extends Controller
 {
-    public function index()
+    /**
+     * Display the customers listing page.
+     */
+    public function index(Request $request)
     {
-        $customers = Customer::with('category')->get();
+        $customers = Customer::with(['category', 'contacts'])->get();
         $categories = CustomerCategory::all();
+
+        if ($request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+            return response()->json(['customers' => $customers]);
+        }
+
         return view('customers.index', compact('customers', 'categories'));
     }
 
-    public function store(Request $request)
+    /**
+     * Store a new customer.
+     */
+    public function store(StoreCustomerRequest $request)
     {
-        $request->validate([
-            'name' => 'required',
-            'reference' => 'required',
-            'customer_category_id' => 'required|exists:customer_categories,id',
-            'start_date' => 'required|date',
-            'description' => 'required',
-        ]);
-        Customer::create($request->all());
-        return redirect()->back()->with('success', 'Customer created.');
+        $customer = Customer::create($request->validated());
+        return response()->json($customer, 201);
     }
 
-    public function update(Request $request, $id)
+    /**
+     * Update an existing customer.
+     */
+    public function update(UpdateCustomerRequest $request, $id)
     {
         $customer = Customer::findOrFail($id);
-        $request->validate([
-            'name' => 'required',
-            'reference' => 'required',
-            'customer_category_id' => 'required|exists:customer_categories,id',
-            'start_date' => 'required|date',
-            'description' => 'required',
-        ]);
-        $customer->update($request->all());
-        return redirect()->back()->with('success', 'Customer updated.');
+        $customer->update($request->validated());
+        return response()->json($customer);
     }
 
+    /**
+     * Delete a customer.
+     */
     public function destroy($id)
     {
         $customer = Customer::findOrFail($id);
         $customer->delete();
-        return redirect()->back()->with('success', 'Customer deleted.');
+        return response()->json(null, 204);
     }
 }
